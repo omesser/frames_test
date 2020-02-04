@@ -89,7 +89,7 @@ class Client(ClientBase):
             try:
                 return getattr(self._session, action)(*args, **kwargs)
             except NewConnectionError:
-                if retry < retries
+                if retry < retries:
                     self._reestablish_session()
                 else:
                     raise
