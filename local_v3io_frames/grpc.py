@@ -32,7 +32,6 @@ GRPC_MESSAGE_SIZE = 128 * (1 << 20)  # 128MB
 channel_options = [
     ('grpc.max_send_message_length', GRPC_MESSAGE_SIZE),
     ('grpc.max_receive_message_length', GRPC_MESSAGE_SIZE),
-    ('grpc.lb_policy_name', 'round_robin'),
 ]
 
 
