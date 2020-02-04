@@ -20,12 +20,11 @@ from datetime import datetime
 from functools import partial, wraps
 from itertools import chain
 from requests.exceptions import RequestException
-from urllib3.exceptions import HTTPError, NewConnectionError
+from urllib3.exceptions import HTTPError
 
 from . import frames_pb2 as fpb
 from .client import ClientBase
-from .errors import (CreateError, DeleteError, Error, ExecuteError, ReadError,
-                     WriteError)
+from .errors import (CreateError, DeleteError, Error, ExecuteError, ReadError, WriteError)
 from .frames_pb2 import Frame
 from .pbutils import df2msg, msg2df, pb2py
 from .pdutils import concat_dfs, should_reorder_columns
