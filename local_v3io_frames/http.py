@@ -94,7 +94,7 @@ class Client(ClientBase):
                     continue
                 raise exc
             print(f'retry exhausted {retry}')
-        print(f'WTF {retry}')
+        print(f'WTF {retries}')
         raise RuntimeError('Crap')
 
     def _fix_address(self, address):
