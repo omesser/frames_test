@@ -20,7 +20,7 @@ from datetime import datetime
 from functools import partial, wraps
 from itertools import chain
 from requests.exceptions import RequestException
-from urllib3.exceptions import HTTPError
+from urllib3.exceptions import HTTPError, NewConnectionError
 
 from . import frames_pb2 as fpb
 from .client import ClientBase
@@ -34,33 +34,46 @@ header_fmt = '<q'
 header_fmt_size = struct.calcsize(header_fmt)
 
 
-def connection_error(error_cls):
-    """Re-raise v3f Exceptions from connection errors"""
-
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kw):
-            try:
-                return fn(*args, **kw)
-            except (RequestException, HTTPError) as err:
-                raise error_cls(str(err))
-
-        return wrapper
-
-    return decorator
-
-
 class Client(ClientBase):
-    """Client is a framsed stream HTTP client"""
+    def connection_error(self, error_cls):
+        """Re-raise v3f Exceptions from connection errors"""
+
+        def decorator(fn):
+            @wraps(fn)
+            def wrapper(*args, **kw):
+                try:
+                    return fn(*args, **kw)
+
+                # tear down and reestablish connection on new connection error
+                except NewConnectionError:
+                    self._reestablish_session()
+                    return fn(*args, **kw)
+                except (RequestException, HTTPError) as err:
+                    raise error_cls(str(err))
+
+            return wrapper
+
+        return decorator
+
+    """Client is a frames stream HTTP client"""
     def __init__(self, *args, **kwargs):
         super(Client, self).__init__(*args, **kwargs)
 
         # create the session object, persist it between requests
-        self._session = requests.sessions.Session()
-        self._session.verify = False
+        self._session = None
+
+        # establish for the first time
+        self._reestablish_session()
 
     def __del__(self):
         self._session.close()
+
+    def _reestablish_session(self):
+        if self._session is not None:
+            self._session.close()
+
+        self._session = requests.sessions.Session()
+        self._session.verify = False
 
     def _fix_address(self, address):
         if '://' not in address:
