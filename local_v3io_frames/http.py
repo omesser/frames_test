@@ -184,7 +184,7 @@ class Client(ClientBase):
         return self.address + '/' + action
 
     def _headers(self, json=False):
-        headers = {'Accept-Encoding': ''}
+        headers = {'Accept-Encoding': '', 'Connection': 'close'}
         if json:
             headers['Content-Type'] = 'application/json'
 
