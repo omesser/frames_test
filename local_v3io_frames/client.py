@@ -16,8 +16,7 @@ import pandas as pd
 from os import environ
 
 from . import frames_pb2 as fpb
-from .errors import (CreateError, DeleteError, ExecuteError, ReadError,
-                     WriteError)
+from .errors import CreateError, DeleteError, ExecuteError, ReadError, WriteError
 
 FAIL = fpb.FAIL
 
