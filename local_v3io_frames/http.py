@@ -34,27 +34,23 @@ header_fmt = '<q'
 header_fmt_size = struct.calcsize(header_fmt)
 
 
+def connection_error(error_cls):
+    """Re-raise v3f Exceptions from connection errors"""
+
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kw):
+            try:
+                return fn(*args, **kw)
+            except (RequestException, HTTPError) as err:
+                raise error_cls(str(err))
+
+        return wrapper
+
+    return decorator
+
+
 class Client(ClientBase):
-    def connection_error(self, error_cls):
-        """Re-raise v3f Exceptions from connection errors"""
-
-        def decorator(fn):
-            @wraps(fn)
-            def wrapper(*args, **kw):
-                try:
-                    return fn(*args, **kw)
-
-                # tear down and reestablish connection on new connection error
-                except NewConnectionError:
-                    self._reestablish_session()
-                    return fn(*args, **kw)
-                except (RequestException, HTTPError) as err:
-                    raise error_cls(str(err))
-
-            return wrapper
-
-        return decorator
-
     """Client is a frames stream HTTP client"""
     def __init__(self, *args, **kwargs):
         super(Client, self).__init__(*args, **kwargs)
@@ -74,6 +70,29 @@ class Client(ClientBase):
 
         self._session = requests.sessions.Session()
         self._session.verify = False
+
+    def _safe_execute_request(self, action, *args, **kwargs):
+        """
+        This wrapper safely retries to teardown and re-establish the session upon NewConnectionError
+            This happens when the client get's instantiated and used very rapidly and tcp connections aren't
+            being closed in time by the request package. Instead of using connection:close on all requests or
+            killing tcp keepalives, we handle this error like so, so a healthy persistent use of the client will
+            be able to enjoy healthy session reuse between requests
+
+        :param action: post, get, update, put ... session request operations
+        :param args: list args to be passed to session request
+        :param kwargs: kwargs to be passed session request
+        :return:
+        """
+        retries = 3
+        for retry in range(1, retries):
+            try:
+                return getattr(self._session, action)(*args, **kwargs)
+            except NewConnectionError:
+                if retry < retries
+                    self._reestablish_session()
+                else:
+                    raise
 
     def _fix_address(self, address):
         if '://' not in address:
@@ -103,7 +122,7 @@ class Client(ClientBase):
         request.update(kw)
 
         url = self._url_for('read')
-        resp = self._session.post(url, json=request, headers=self._headers(json=True), stream=True)
+        resp = self._safe_execute_request('post', url, json=request, headers=self._headers(json=True), stream=True)
         if not resp.ok:
             raise Error('cannot call API - {}'.format(resp.text))
 
@@ -125,7 +144,7 @@ class Client(ClientBase):
         frames = (enc(df2msg(df, labels, index_cols)) for df in dfs)
         data = chain([request], frames)
 
-        resp = self._session.post(url, headers=headers, data=data)
+        resp = self._safe_execute_request('post', url, headers=headers, data=data)
 
         if not resp.ok:
             raise Error('cannot call API - {}'.format(resp.text))
@@ -145,7 +164,7 @@ class Client(ClientBase):
 
         url = self._url_for('create')
         headers = self._headers()
-        resp = self._session.post(url, headers=headers, json=request)
+        resp = self._safe_execute_request('post', url, headers=headers, json=request)
         if not resp.ok:
             raise CreateError(resp.text)
 
@@ -166,7 +185,7 @@ class Client(ClientBase):
         url = self._url_for('delete')
         headers = self._headers()
         # TODO: Make it DELETE ?
-        resp = self._session.post(url, headers=headers, json=request)
+        resp = self._safe_execute_request('post', url, headers=headers, json=request)
         if not resp.ok:
             raise CreateError(resp.text)
 
@@ -183,7 +202,7 @@ class Client(ClientBase):
 
         url = self._url_for('exec')
         headers = self._headers()
-        resp = self._session.post(url, headers=headers, json=request)
+        resp = self._safe_execute_request('post', url, headers=headers, json=request)
         if not resp.ok:
             raise ExecuteError(resp.text)
 
