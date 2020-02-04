@@ -61,7 +61,6 @@ class Client(ClientBase):
 
     def __del__(self):
         self._session.close()
-        super(Client, self).__del__()
 
     def _fix_address(self, address):
         if '://' not in address:
