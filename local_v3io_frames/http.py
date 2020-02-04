@@ -89,11 +89,11 @@ class Client(ClientBase):
             try:
                 return getattr(self._session, action)(*args, **kwargs)
             except NewConnectionError as exc:
+                print(f'retrying {retry}')
                 if retry < retries:
                     self._reestablish_session()
                     continue
                 raise exc
-            print(f'retry exhausted {retry}')
         print(f'WTF {retries}')
         raise RuntimeError('Crap')
 
