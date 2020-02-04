@@ -85,7 +85,7 @@ class Client(ClientBase):
         :return:
         """
         retries = 3
-        for retry in range(1, retries):
+        for retry in range(retries):
             try:
                 return getattr(self._session, action)(*args, **kwargs)
             except NewConnectionError as exc:
@@ -93,6 +93,9 @@ class Client(ClientBase):
                     self._reestablish_session()
                     continue
                 raise exc
+            print(f'retry exhausted {retry}')
+        print(f'WTF {retry}')
+        raise RuntimeError('Crap')
 
     def _fix_address(self, address):
         if '://' not in address:
