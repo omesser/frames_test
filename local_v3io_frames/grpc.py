@@ -76,6 +76,9 @@ class Client(ClientBase):
         # create the session object, persist it between requests
         self._open_new_channel()
 
+    def __del__(self):
+        self._channel.close()
+
     def _fix_address(self, address):
         if address.startswith(self._scheme_prefix):
             return address[len(self._scheme_prefix):]
@@ -87,27 +90,26 @@ class Client(ClientBase):
     @grpc_raise(ReadError)
     def do_read(self, backend, table, query, columns, filter, group_by, limit,
                 data_format, row_layout, max_in_message, marker, **kw):
-        # TODO: Create channel once?
-        with self._channel as channel:
-            stub = fgrpc.FramesStub(channel)
-            request = fpb.ReadRequest(
-                session=self.session,
-                backend=backend,
-                query=query,
-                table=table,
-                columns=columns,
-                filter=filter,
-                group_by=group_by,
-                message_limit=max_in_message,
-                limit=limit,
-                row_layout=row_layout,
-                marker=marker,
-                **kw
-            )
-            do_reorder = should_reorder_columns(backend, query, columns)
-            for frame in stub.Read(request):
-                yield msg2df(frame, self.frame_factory,
-                             columns, do_reorder=do_reorder)
+
+        stub = fgrpc.FramesStub(self._channel)
+        request = fpb.ReadRequest(
+            session=self.session,
+            backend=backend,
+            query=query,
+            table=table,
+            columns=columns,
+            filter=filter,
+            group_by=group_by,
+            message_limit=max_in_message,
+            limit=limit,
+            row_layout=row_layout,
+            marker=marker,
+            **kw
+        )
+        do_reorder = should_reorder_columns(backend, query, columns)
+        for frame in stub.Read(request):
+            yield msg2df(frame, self.frame_factory,
+                         columns, do_reorder=do_reorder)
 
     # We need to write "read" since once you have a yield in a function
     # (do_read) it'll always return a generator
@@ -123,57 +125,53 @@ class Client(ClientBase):
 
     @grpc_raise(WriteError)
     def _write(self, request, dfs, labels, index_cols):
-        with self._channel as channel:
-            stub = fgrpc.FramesStub(channel)
-            stub.Write(write_stream(request, dfs, labels, index_cols))
+        stub = fgrpc.FramesStub(self._channel)
+        stub.Write(write_stream(request, dfs, labels, index_cols))
 
     @grpc_raise(CreateError)
     def _create(self, backend, table, attrs, schema, if_exists):
         attrs = pb_map(attrs)
-        with self._channel as channel:
-            stub = fgrpc.FramesStub(channel)
-            request = fpb.CreateRequest(
-                session=self.session,
-                backend=backend,
-                table=table,
-                attribute_map=attrs,
-                schema=schema,
-                if_exists=if_exists,
-            )
-            stub.Create(request)
+        stub = fgrpc.FramesStub(self._channel)
+        request = fpb.CreateRequest(
+            session=self.session,
+            backend=backend,
+            table=table,
+            attribute_map=attrs,
+            schema=schema,
+            if_exists=if_exists,
+        )
+        stub.Create(request)
 
     @grpc_raise(DeleteError)
     def _delete(self, backend, table, filter, start, end, if_missing):
         start, end = time2str(start), time2str(end)
-        with self._channel as channel:
-            stub = fgrpc.FramesStub(channel)
-            request = fpb.DeleteRequest(
-                session=self.session,
-                backend=backend,
-                table=table,
-                filter=filter,
-                start=start,
-                end=end,
-                if_missing=if_missing,
-            )
-            stub.Delete(request)
+        stub = fgrpc.FramesStub(self._channel)
+        request = fpb.DeleteRequest(
+            session=self.session,
+            backend=backend,
+            table=table,
+            filter=filter,
+            start=start,
+            end=end,
+            if_missing=if_missing,
+        )
+        stub.Delete(request)
 
     @grpc_raise(ExecuteError)
     def _execute(self, backend, table, command, args, expression):
         args = pb_map(args)
-        with self._channel as channel:
-            stub = fgrpc.FramesStub(channel)
-            request = fpb.ExecRequest(
-                session=self.session,
-                backend=backend,
-                table=table,
-                command=command,
-                args=args,
-                expression=expression,
-            )
-            resp = stub.Exec(request)
-            if resp.frame:
-                return msg2df(resp.frame, self.frame_factory)
+        stub = fgrpc.FramesStub(self._channel)
+        request = fpb.ExecRequest(
+            session=self.session,
+            backend=backend,
+            table=table,
+            command=command,
+            args=args,
+            expression=expression,
+        )
+        resp = stub.Exec(request)
+        if resp.frame:
+            return msg2df(resp.frame, self.frame_factory)
 
 
 def write_stream(request, dfs, labels, index_cols):
