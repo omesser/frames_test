@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 
 import pandas as pd
 from datetime import datetime
@@ -27,12 +26,7 @@ from .pbutils import msg2df, pb_map, df2msg
 from .pdutils import concat_dfs, should_reorder_columns
 
 IGNORE, FAIL = fpb.IGNORE, fpb.FAIL
-_scheme_prefix = 'grpc://'
 GRPC_MESSAGE_SIZE = 128 * (1 << 20)  # 128MB
-channel_options = [
-    ('grpc.max_send_message_length', GRPC_MESSAGE_SIZE),
-    ('grpc.max_receive_message_length', GRPC_MESSAGE_SIZE),
-]
 
 
 def grpc_raise(err_cls):
@@ -54,16 +48,44 @@ def grpc_raise(err_cls):
 
 
 class Client(ClientBase):
+    def __init__(self, *args, **kwargs):
+        super(Client, self).__init__(*args, **kwargs)
+
+        # default channel options
+        self._channel_options = [
+            ('grpc.max_send_message_length', GRPC_MESSAGE_SIZE),
+            ('grpc.max_receive_message_length', GRPC_MESSAGE_SIZE),
+        ]
+
+        # if not self._persist_connection:
+        #     self._channel_options.extend([
+        #         ('grpc.keepalive_time_ms', 10000),
+        #         ('grpc.keepalive_timeout_ms', 5000),
+        #         ('grpc.keepalive_permit_without_calls', True),
+        #         ('grpc.http2.max_pings_without_data', 0),
+        #         ('grpc.http2.min_time_between_pings_ms', 10000),
+        #         ('grpc.http2.min_ping_interval_without_data_ms', 5000),
+        #     ])
+
+        self._scheme_prefix = 'grpc://'
+        self._channel = None
+
+        # create the session object, persist it between requests
+        self._open_new_channel()
+
     def _fix_address(self, address):
-        if address.startswith(_scheme_prefix):
-            return address[len(_scheme_prefix):]
+        if address.startswith(self._scheme_prefix):
+            return address[len(self._scheme_prefix):]
         return address
+
+    def _open_new_channel(self):
+        self._channel = grpc.insecure_channel(self.address, options=self._channel_options)
 
     @grpc_raise(ReadError)
     def do_read(self, backend, table, query, columns, filter, group_by, limit,
                 data_format, row_layout, max_in_message, marker, **kw):
         # TODO: Create channel once?
-        with new_channel(self.address) as channel:
+        with self._channel as channel:
             stub = fgrpc.FramesStub(channel)
             request = fpb.ReadRequest(
                 session=self.session,
@@ -98,14 +120,14 @@ class Client(ClientBase):
 
     @grpc_raise(WriteError)
     def _write(self, request, dfs, labels, index_cols):
-        with new_channel(self.address) as channel:
+        with self._channel as channel:
             stub = fgrpc.FramesStub(channel)
             stub.Write(write_stream(request, dfs, labels, index_cols))
 
     @grpc_raise(CreateError)
     def _create(self, backend, table, attrs, schema, if_exists):
         attrs = pb_map(attrs)
-        with new_channel(self.address) as channel:
+        with self._channel as channel:
             stub = fgrpc.FramesStub(channel)
             request = fpb.CreateRequest(
                 session=self.session,
@@ -120,7 +142,7 @@ class Client(ClientBase):
     @grpc_raise(DeleteError)
     def _delete(self, backend, table, filter, start, end, if_missing):
         start, end = time2str(start), time2str(end)
-        with new_channel(self.address) as channel:
+        with self._channel as channel:
             stub = fgrpc.FramesStub(channel)
             request = fpb.DeleteRequest(
                 session=self.session,
@@ -136,7 +158,7 @@ class Client(ClientBase):
     @grpc_raise(ExecuteError)
     def _execute(self, backend, table, command, args, expression):
         args = pb_map(args)
-        with new_channel(self.address) as channel:
+        with self._channel as channel:
             stub = fgrpc.FramesStub(channel)
             request = fpb.ExecRequest(
                 session=self.session,
@@ -149,14 +171,6 @@ class Client(ClientBase):
             resp = stub.Exec(request)
             if resp.frame:
                 return msg2df(resp.frame, self.frame_factory)
-
-
-def new_channel(address):
-    if os.environ.get('https_proxy'):
-        del os.environ['https_proxy']
-    if os.environ.get('http_proxy'):
-        del os.environ['http_proxy']
-    return grpc.insecure_channel(address, options=channel_options)
 
 
 def write_stream(request, dfs, labels, index_cols):

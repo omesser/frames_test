@@ -51,13 +51,13 @@ def connection_error(error_cls):
 
 class Client(ClientBase):
     """Client is a frames stream HTTP client"""
+
     def __init__(self, *args, **kwargs):
         super(Client, self).__init__(*args, **kwargs)
 
-        # create the session object, persist it between requests
         self._session = None
 
-        # establish for the first time
+        # create the session object, persist it between requests
         self._establish_session()
 
     def __del__(self):
