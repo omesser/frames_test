@@ -98,14 +98,6 @@ class Client(ClientBase):
         return address
 
     def _open_new_channel(self):
-        if not self._persist_connection:
-
-            # tear down existing channels or we might leak them and hit this under stress:
-            # status = StatusCode.UNAVAILABLE
-            # 	details = "failed to connect to all addresses"
-            # 	debug_error_string = "{"created":"@1580905482.017356730","description":"Failed to pick subchannel","file":"src/core/ext/filters/client_channel/client_channel.cc","file_line":3941,"referenced_errors":[{"created":"@1580905482.017353250","description":"failed to connect to all addresses","file":"src/core/ext/filters/client_channel/lb_policy/pick_first/pick_first.cc","file_line":393,"grpc_status":14}]}"
-            grpc.Channel.
-
         self._channel = grpc.insecure_channel(self.address, options=self._channel_options)
 
     @grpc_raise(ReadError)
