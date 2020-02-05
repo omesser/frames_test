@@ -63,9 +63,20 @@ class Client(ClientBase):
 
         if not self._persist_connection:
             self._channel_options.extend([
-                ('grpc.keepalive_time_ms', 0),
+                # Maximum time that a channel may have no outstanding rpcs, after which the
+                #   server will close the connection. Int valued, milliseconds
+                # ('grpc.keepalive_time_ms', 0), ?? must be >=1
+
+                # Maximum time that a channel may have no outstanding rpcs, after which the
+                #   server will close the connection. Int valued, milliseconds.
+                ('grpc.max_connection_idle_ms', 0),
+
+                # After a duration of this time the client/server pings its peer to see if the
+                #     transport is still alive. Int valued, milliseconds
                 # ('grpc.keepalive_timeout_ms', 5000),
-                # ('grpc.keepalive_permit_without_calls', False),
+
+                # Is it permissible to send keepalive pings without any outstanding streams.
+                ('grpc.keepalive_permit_without_calls', False),
                 # ('grpc.http2.max_pings_without_data', 0),
                 # ('grpc.http2.min_time_between_pings_ms', 10000),
                 # ('grpc.http2.min_ping_interval_without_data_ms', 5000),
