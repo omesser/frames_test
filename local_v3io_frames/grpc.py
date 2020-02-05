@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
 import pandas as pd
 from datetime import datetime
@@ -151,6 +152,10 @@ class Client(ClientBase):
 
 
 def new_channel(address):
+    if os.environ.get('https_proxy'):
+        del os.environ['https_proxy']
+    if os.environ.get('http_proxy'):
+        del os.environ['http_proxy']
     return grpc.insecure_channel(address, options=channel_options)
 
 
