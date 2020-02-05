@@ -66,15 +66,15 @@ class Client(ClientBase):
                 # Maximum time that a channel may have no outstanding rpcs, after which the
                 #   server will close the connection. Int valued, milliseconds
                 #   must be >=1
-                # ('grpc.keepalive_time_ms', 1),
-                #
-                # # Maximum time that a channel may have no outstanding rpcs, after which the
-                # #   server will close the connection. Int valued, milliseconds.
-                # ('grpc.max_connection_idle_ms', 0),
-                #
-                #
-                # # Is it permissible to send keepalive pings without any outstanding streams.
-                # ('grpc.keepalive_permit_without_calls', False),
+                ('grpc.keepalive_time_ms', 1),
+
+                # Maximum time that a channel may have no outstanding rpcs, after which the
+                #   server will close the connection. Int valued, milliseconds.
+                ('grpc.max_connection_idle_ms', 0),
+
+
+                # Is it permissible to send keepalive pings without any outstanding streams.
+                ('grpc.keepalive_permit_without_calls', False),
 
                 # After a duration of this time the client/server pings its peer to see if the
                 #     transport is still alive. Int valued, milliseconds
