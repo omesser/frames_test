@@ -138,6 +138,8 @@ class Client(ClientBase):
     def _write(self, request, dfs, labels, index_cols):
         stub = fgrpc.FramesStub(self._channel)
         stub.Write(write_stream(request, dfs, labels, index_cols))
+        if not self._persist_connection:
+            self._channel.close()
 
     @grpc_raise(CreateError)
     def _create(self, backend, table, attrs, schema, if_exists):
