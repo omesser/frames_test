@@ -200,8 +200,8 @@ class Client(ClientBase):
         # we disable keep alive on the session to cover cases of rapid and tight instantiations
         # and usages of the client, in which case request's tcp connection is harmful and will result in
         # NewConnectionError under stress
-        if not self._persist_connection:
-            headers['Connection'] = 'close'
+        # if not self._persist_connection:
+        #     headers['Connection'] = 'close'
 
         if json:
             headers['Content-Type'] = 'application/json'
