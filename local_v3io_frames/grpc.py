@@ -49,6 +49,10 @@ def grpc_raise(err_cls):
 
 class Client(ClientBase):
     def __init__(self, *args, **kwargs):
+
+        # before parent initializer calls _fix_address()
+        self._scheme_prefix = 'grpc://'
+
         super(Client, self).__init__(*args, **kwargs)
 
         # default channel options
@@ -67,7 +71,6 @@ class Client(ClientBase):
         #         ('grpc.http2.min_ping_interval_without_data_ms', 5000),
         #     ])
 
-        self._scheme_prefix = 'grpc://'
         self._channel = None
 
         # create the session object, persist it between requests
