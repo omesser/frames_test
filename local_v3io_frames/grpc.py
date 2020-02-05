@@ -65,7 +65,8 @@ class Client(ClientBase):
             self._channel_options.extend([
                 # Maximum time that a channel may have no outstanding rpcs, after which the
                 #   server will close the connection. Int valued, milliseconds
-                # ('grpc.keepalive_time_ms', 0), ?? must be >=1
+                #   must be >=1
+                ('grpc.keepalive_time_ms', 1),
 
                 # Maximum time that a channel may have no outstanding rpcs, after which the
                 #   server will close the connection. Int valued, milliseconds.
