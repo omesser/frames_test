@@ -61,15 +61,15 @@ class Client(ClientBase):
             ('grpc.max_receive_message_length', GRPC_MESSAGE_SIZE),
         ]
 
-        # if not self._persist_connection:
-        #     self._channel_options.extend([
-        #         ('grpc.keepalive_time_ms', 10000),
-        #         ('grpc.keepalive_timeout_ms', 5000),
-        #         ('grpc.keepalive_permit_without_calls', True),
-        #         ('grpc.http2.max_pings_without_data', 0),
-        #         ('grpc.http2.min_time_between_pings_ms', 10000),
-        #         ('grpc.http2.min_ping_interval_without_data_ms', 5000),
-        #     ])
+        if not self._persist_connection:
+            self._channel_options.extend([
+                # ('grpc.keepalive_time_ms', 10000),
+                # ('grpc.keepalive_timeout_ms', 5000),
+                ('grpc.keepalive_permit_without_calls', False),
+                # ('grpc.http2.max_pings_without_data', 0),
+                # ('grpc.http2.min_time_between_pings_ms', 10000),
+                # ('grpc.http2.min_ping_interval_without_data_ms', 5000),
+            ])
 
         self._channel = None
 
